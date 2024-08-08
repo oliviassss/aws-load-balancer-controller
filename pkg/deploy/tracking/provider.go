@@ -43,6 +43,9 @@ type Provider interface {
 	// StackTags provide the tags for stack.
 	StackTags(stack core.Stack) map[string]string
 
+	// GetClusterName gets the cluster name
+	GetClusterName() string
+
 	// ResourceTags provide the tags for stack resources
 	ResourceTags(stack core.Stack, res core.Resource, additionalTags map[string]string) map[string]string
 
@@ -87,6 +90,10 @@ func (p *defaultProvider) StackTags(stack core.Stack) map[string]string {
 		p.prefixedTrackingKey(p.clusterTagPrefix, "cluster"): p.clusterName,
 		p.prefixedTrackingKey(p.resourceTagPrefix, "stack"):  stackID.String(),
 	}
+}
+
+func (p *defaultProvider) GetClusterName() string {
+	return p.clusterName
 }
 
 func (p *defaultProvider) ResourceTags(stack core.Stack, res core.Resource, additionalTags map[string]string) map[string]string {
