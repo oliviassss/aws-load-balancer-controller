@@ -54,11 +54,11 @@ func Test_defaultBackendSGProvider_Get(t *testing.T) {
 			Values: awssdk.StringSlice([]string{defaultVPCID}),
 		},
 		{
-			Name:   awssdk.String("tag:elbv2.k8s.aws/cluster"),
+			Name:   awssdk.String("tag:elbv2.eks.aws/cluster"),
 			Values: awssdk.StringSlice([]string{"testCluster"}),
 		},
 		{
-			Name:   awssdk.String("tag:elbv2.k8s.aws/resource"),
+			Name:   awssdk.String("tag:elbv2.eks.aws/resource"),
 			Values: awssdk.StringSlice([]string{"backend-sg"}),
 		},
 	}
@@ -128,17 +128,17 @@ func Test_defaultBackendSGProvider_Get(t *testing.T) {
 					{
 						req: &ec2sdk.CreateSecurityGroupInput{
 							Description: awssdk.String(sgDescription),
-							GroupName:   awssdk.String("k8s-traffic-testCluster-411a1bcdb1"),
+							GroupName:   awssdk.String("eks-traffic-testCluster-411a1bcdb1"),
 							TagSpecifications: []*ec2sdk.TagSpecification{
 								{
 									ResourceType: awssdk.String("security-group"),
 									Tags: []*ec2sdk.Tag{
 										{
-											Key:   awssdk.String("elbv2.k8s.aws/cluster"),
+											Key:   awssdk.String("elbv2.eks.aws/cluster"),
 											Value: awssdk.String(defaultClusterName),
 										},
 										{
-											Key:   awssdk.String("elbv2.k8s.aws/resource"),
+											Key:   awssdk.String("elbv2.eks.aws/resource"),
 											Value: awssdk.String("backend-sg"),
 										},
 									},
@@ -170,7 +170,7 @@ func Test_defaultBackendSGProvider_Get(t *testing.T) {
 					{
 						req: &ec2sdk.CreateSecurityGroupInput{
 							Description: awssdk.String(sgDescription),
-							GroupName:   awssdk.String("k8s-traffic-testCluster-411a1bcdb1"),
+							GroupName:   awssdk.String("eks-traffic-testCluster-411a1bcdb1"),
 							TagSpecifications: []*ec2sdk.TagSpecification{
 								{
 									ResourceType: awssdk.String("security-group"),
@@ -188,11 +188,11 @@ func Test_defaultBackendSGProvider_Get(t *testing.T) {
 											Value: awssdk.String("value"),
 										},
 										{
-											Key:   awssdk.String("elbv2.k8s.aws/cluster"),
+											Key:   awssdk.String("elbv2.eks.aws/cluster"),
 											Value: awssdk.String(defaultClusterName),
 										},
 										{
-											Key:   awssdk.String("elbv2.k8s.aws/resource"),
+											Key:   awssdk.String("elbv2.eks.aws/resource"),
 											Value: awssdk.String("backend-sg"),
 										},
 									},
@@ -244,17 +244,17 @@ func Test_defaultBackendSGProvider_Get(t *testing.T) {
 					{
 						req: &ec2sdk.CreateSecurityGroupInput{
 							Description: awssdk.String(sgDescription),
-							GroupName:   awssdk.String("k8s-traffic-testCluster-411a1bcdb1"),
+							GroupName:   awssdk.String("eks-traffic-testCluster-411a1bcdb1"),
 							TagSpecifications: []*ec2sdk.TagSpecification{
 								{
 									ResourceType: awssdk.String("security-group"),
 									Tags: []*ec2sdk.Tag{
 										{
-											Key:   awssdk.String("elbv2.k8s.aws/cluster"),
+											Key:   awssdk.String("elbv2.eks.aws/cluster"),
 											Value: awssdk.String(defaultClusterName),
 										},
 										{
-											Key:   awssdk.String("elbv2.k8s.aws/resource"),
+											Key:   awssdk.String("elbv2.eks.aws/resource"),
 											Value: awssdk.String("backend-sg"),
 										},
 									},

@@ -30,8 +30,8 @@ const (
 	defaultSGDeletionTimeout      = 2 * time.Minute
 
 	resourceTypeSecurityGroup = "security-group"
-	tagKeyK8sCluster          = "elbv2.k8s.aws/cluster"
-	tagKeyResource            = "elbv2.k8s.aws/resource"
+	tagKeyK8sCluster          = "elbv2.eks.aws/cluster"
+	tagKeyResource            = "elbv2.eks.aws/resource"
 	tagValueBackend           = "backend-sg"
 
 	explicitGroupFinalizerPrefix = "group.ingress.k8s.aws/"
@@ -341,7 +341,7 @@ func (p *defaultBackendSGProvider) getBackendSGName() string {
 	_, _ = sgNameHash.Write([]byte(p.clusterName))
 	sgHash := hex.EncodeToString(sgNameHash.Sum(nil))
 	sanitizedClusterName := invalidSGNamePattern.ReplaceAllString(p.clusterName, "")
-	return fmt.Sprintf("k8s-traffic-%.232s-%.10s", sanitizedClusterName, sgHash)
+	return fmt.Sprintf("eks-traffic-%.232s-%.10s", sanitizedClusterName, sgHash)
 }
 
 func isSecurityGroupDependencyViolationError(err error) bool {
