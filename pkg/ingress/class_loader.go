@@ -18,7 +18,7 @@ import (
 
 const (
 	// the controller name used in IngressClass for ALB.
-	IngressClassControllerALB = "ingress.k8s.aws/alb"
+	IngressClassControllerALB = "ingress.k8s.aws/eks-alb"
 	// the Kind for IngressClassParams CRD.
 	ingressClassParamsKind = "IngressClassParams"
 	// default class from ingressClass

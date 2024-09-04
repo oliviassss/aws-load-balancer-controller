@@ -438,7 +438,7 @@ func Test_defaultReferenceIndexer_BuildIngressClassParamsRefIndexes(t *testing.T
 			args: args{
 				ingClass: &networking.IngressClass{
 					Spec: networking.IngressClassSpec{
-						Controller: "ingress.k8s.aws/alb",
+						Controller: "ingress.k8s.aws/eks-alb",
 					},
 				},
 			},
@@ -460,7 +460,7 @@ func Test_defaultReferenceIndexer_BuildIngressClassParamsRefIndexes(t *testing.T
 			args: args{
 				ingClass: &networking.IngressClass{
 					Spec: networking.IngressClassSpec{
-						Controller: "ingress.k8s.aws/alb",
+						Controller: "ingress.k8s.aws/eks-alb",
 						Parameters: &networking.IngressClassParametersReference{
 							APIGroup: awssdk.String("elbv2.k8s.aws"),
 							Kind:     "IngressClassParams",
@@ -476,7 +476,7 @@ func Test_defaultReferenceIndexer_BuildIngressClassParamsRefIndexes(t *testing.T
 			args: args{
 				ingClass: &networking.IngressClass{
 					Spec: networking.IngressClassSpec{
-						Controller: "ingress.k8s.aws/alb",
+						Controller: "ingress.k8s.aws/eks-alb",
 						Parameters: &networking.IngressClassParametersReference{
 							APIGroup: awssdk.String("other group"),
 							Kind:     "IngressClassParams",
@@ -492,7 +492,7 @@ func Test_defaultReferenceIndexer_BuildIngressClassParamsRefIndexes(t *testing.T
 			args: args{
 				ingClass: &networking.IngressClass{
 					Spec: networking.IngressClassSpec{
-						Controller: "ingress.k8s.aws/alb",
+						Controller: "ingress.k8s.aws/eks-alb",
 						Parameters: &networking.IngressClassParametersReference{
 							APIGroup: nil,
 							Kind:     "IngressClassParams",
