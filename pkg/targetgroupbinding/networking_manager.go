@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	tgbNetworkingIPPermissionLabelKey   = "elbv2.k8s.aws/targetGroupBinding"
+	tgbNetworkingIPPermissionLabelKey   = "elbv2.eks.aws/targetGroupBinding"
 	tgbNetworkingIPPermissionLabelValue = "shared"
 	defaultTgbMinPort                   = int64(0)
 	defaultTgbMaxPort                   = int64(65535)
