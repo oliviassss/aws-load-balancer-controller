@@ -141,7 +141,7 @@ func Test_ingressValidator_checkIngressClass(t *testing.T) {
 						Name: "awesome-class",
 					},
 					Spec: networking.IngressClassSpec{
-						Controller: "ingress.k8s.aws/alb",
+						Controller: "ingress.k8s.aws/eks-alb",
 					},
 				},
 			},
@@ -164,7 +164,7 @@ func Test_ingressValidator_checkIngressClass(t *testing.T) {
 						Name: "awesome-class",
 					},
 					Spec: networking.IngressClassSpec{
-						Controller: "ingress.k8s.aws/alb",
+						Controller: "ingress.k8s.aws/eks-alb",
 						Parameters: &networking.IngressClassParametersReference{
 							APIGroup: awssdk.String("elbv2.k8s.aws"),
 							Kind:     "IngressClassParams",
@@ -196,7 +196,7 @@ func Test_ingressValidator_checkIngressClass(t *testing.T) {
 						},
 					},
 					Spec: networking.IngressClassSpec{
-						Controller: "ingress.k8s.aws/alb",
+						Controller: "ingress.k8s.aws/eks-alb",
 					},
 				},
 			},
@@ -803,9 +803,9 @@ func Test_ingressValidator_checkIngressClassUsage(t *testing.T) {
 							Name: "awesome-class",
 						},
 						Spec: networking.IngressClassSpec{
-							Controller: "ingress.k8s.aws/alb",
+							Controller: "ingress.k8s.aws/eks-alb",
 							Parameters: &networking.IngressClassParametersReference{
-								APIGroup: awssdk.String("elbv2.k8s.aws"),
+								APIGroup: awssdk.String("elbv2.eks.aws"),
 								Kind:     "IngressClassParams",
 								Name:     "awesome-class-params",
 							},

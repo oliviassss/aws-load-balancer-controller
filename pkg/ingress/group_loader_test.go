@@ -20,637 +20,637 @@ import (
 	testclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func Test_defaultGroupLoader_Load(t *testing.T) {
-	ingClassA := &networking.IngressClass{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "ing-class-a",
-		},
-		Spec: networking.IngressClassSpec{
-			Controller: "ingress.k8s.aws/alb",
-			Parameters: &networking.IngressClassParametersReference{
-				APIGroup: awssdk.String("elbv2.k8s.aws"),
-				Kind:     "IngressClassParams",
-				Name:     "ing-class-a-params",
-			},
-		},
-	}
-	ingClassAParams := &elbv2api.IngressClassParams{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "ing-class-a-params",
-		},
-		Spec: elbv2api.IngressClassParamsSpec{
-			Group: &elbv2api.IngressGroup{
-				Name: "awesome-group",
-			},
-		},
-	}
-
-	ingClassB := &networking.IngressClass{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "ing-class-b",
-		},
-		Spec: networking.IngressClassSpec{
-			Controller: "ingress.k8s.aws/alb",
-			Parameters: &networking.IngressClassParametersReference{
-				APIGroup: awssdk.String("elbv2.k8s.aws"),
-				Kind:     "IngressClassParams",
-				Name:     "ing-class-b-params",
-			},
-		},
-	}
-
-	ingClassBParams := &elbv2api.IngressClassParams{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "ing-class-b-params",
-		},
-		Spec: elbv2api.IngressClassParamsSpec{
-			Group: &elbv2api.IngressGroup{
-				Name: "awesome-group",
-			},
-		},
-	}
-
-	ingClassC := &networking.IngressClass{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "ing-class-c",
-		},
-		Spec: networking.IngressClassSpec{
-			Controller: "ingress.k8s.aws/alb",
-			Parameters: &networking.IngressClassParametersReference{
-				APIGroup: awssdk.String("elbv2.k8s.aws"),
-				Kind:     "IngressClassParams",
-				Name:     "ing-class-c-params",
-			},
-		},
-	}
-
-	ingClassCParams := &elbv2api.IngressClassParams{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "ing-class-c-params",
-		},
-		Spec: elbv2api.IngressClassParamsSpec{
-			Group: &elbv2api.IngressGroup{
-				Name: "another-group",
-			},
-		},
-	}
-
-	ingClassD := &networking.IngressClass{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "ing-class-d",
-		},
-		Spec: networking.IngressClassSpec{
-			Controller: "ingress.k8s.aws/alb",
-		},
-	}
-
-	ing1 := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ing-ns",
-			Name:      "ing-1",
-		},
-		Spec: networking.IngressSpec{
-			IngressClassName: awssdk.String(ingClassA.Name),
-		},
-	}
-	ing1BeenDeletedWithoutFinalizer := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   "ing-ns",
-			Name:        "ing-1",
-			Annotations: map[string]string{"unit-test/delete": "true"},
-		},
-		Spec: networking.IngressSpec{
-			IngressClassName: awssdk.String(ingClassA.Name),
-		},
-	}
-	ing1BeenDeletedWithFinalizer := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   "ing-ns",
-			Name:        "ing-1",
-			Annotations: map[string]string{"unit-test/delete": "true"},
-			Finalizers: []string{
-				"group.ingress.k8s.aws/awesome-group",
-			},
-		},
-		Spec: networking.IngressSpec{
-			IngressClassName: awssdk.String(ingClassA.Name),
-		},
-	}
-	ing1WithHighGroupOrder := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ing-ns",
-			Name:      "ing-1",
-			Annotations: map[string]string{
-				"alb.ingress.kubernetes.io/group.order": "100",
-			},
-		},
-		Spec: networking.IngressSpec{
-			IngressClassName: awssdk.String(ingClassA.Name),
-		},
-	}
-
-	ing2 := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ing-ns",
-			Name:      "ing-2",
-		},
-		Spec: networking.IngressSpec{
-			IngressClassName: awssdk.String(ingClassB.Name),
-		},
-	}
-	ing3 := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ing-ns",
-			Name:      "ing-3",
-		},
-		Spec: networking.IngressSpec{
-			IngressClassName: awssdk.String(ingClassC.Name),
-		},
-	}
-	ing4 := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ing-ns",
-			Name:      "ing-4",
-		},
-		Spec: networking.IngressSpec{
-			IngressClassName: awssdk.String(ingClassD.Name),
-		},
-	}
-	ing5 := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ing-ns",
-			Name:      "ing-5",
-			Annotations: map[string]string{
-				"alb.ingress.kubernetes.io/group.name": "awesome-group",
-			},
-		},
-		Spec: networking.IngressSpec{
-			IngressClassName: awssdk.String(ingClassD.Name),
-		},
-	}
-	ing5WithImplicitGroupFinalizer := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ing-ns",
-			Name:      "ing-5",
-			Annotations: map[string]string{
-				"alb.ingress.kubernetes.io/group.name": "awesome-group",
-			},
-			Finalizers: []string{
-				"ingress.k8s.aws/resources",
-			},
-		},
-		Spec: networking.IngressSpec{
-			IngressClassName: awssdk.String(ingClassD.Name),
-		},
-	}
-
-	ing6 := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ing-ns",
-			Name:      "ing-6",
-			Annotations: map[string]string{
-				"kubernetes.io/ingress.class": "alb",
-			},
-		},
-	}
-	ing6BeenDeletedWithoutFinalizer := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ing-ns",
-			Name:      "ing-6",
-			Annotations: map[string]string{
-				"kubernetes.io/ingress.class": "alb",
-				"unit-test/delete":            "true",
-			},
-		},
-	}
-	ing6BeenDeletedWithFinalizer := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ing-ns",
-			Name:      "ing-6",
-			Annotations: map[string]string{
-				"kubernetes.io/ingress.class": "alb",
-				"unit-test/delete":            "true",
-			},
-			Finalizers: []string{
-				"ingress.k8s.aws/resources",
-			},
-		},
-	}
-	ing7 := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ing-ns",
-			Name:      "ing-7",
-			Annotations: map[string]string{
-				"kubernetes.io/ingress.class":          "alb",
-				"alb.ingress.kubernetes.io/group.name": "awesome-group",
-			},
-		},
-	}
-	ing7WithImplicitGroupFinalizer := &networking.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ing-ns",
-			Name:      "ing-7",
-			Annotations: map[string]string{
-				"kubernetes.io/ingress.class":          "alb",
-				"alb.ingress.kubernetes.io/group.name": "awesome-group",
-			},
-			Finalizers: []string{
-				"ingress.k8s.aws/resources",
-			},
-		},
-	}
-
-	type env struct {
-		ingClassList       []*networking.IngressClass
-		ingClassParamsList []*elbv2api.IngressClassParams
-		ingList            []*networking.Ingress
-	}
-	type args struct {
-		groupID GroupID
-	}
-	tests := []struct {
-		name    string
-		env     env
-		args    args
-		want    Group
-		wantErr error
-	}{
-		{
-			name: "load explicit group(awesome-group)",
-			env: env{
-				ingClassList: []*networking.IngressClass{
-					ingClassA, ingClassB, ingClassC, ingClassD,
-				},
-				ingClassParamsList: []*elbv2api.IngressClassParams{
-					ingClassAParams, ingClassBParams, ingClassCParams,
-				},
-				ingList: []*networking.Ingress{
-					ing1, ing2, ing3, ing4, ing5, ing6, ing7,
-				},
-			},
-			args: args{
-				groupID: GroupID{Name: "awesome-group"},
-			},
-			want: Group{
-				ID: GroupID{Name: "awesome-group"},
-				Members: []ClassifiedIngress{
-					{
-						Ing: ing1,
-						IngClassConfig: ClassConfiguration{
-							IngClass:       ingClassA,
-							IngClassParams: ingClassAParams,
-						},
-					},
-					{
-						Ing: ing2,
-						IngClassConfig: ClassConfiguration{
-							IngClass:       ingClassB,
-							IngClassParams: ingClassBParams,
-						},
-					},
-					{
-						Ing: ing5,
-						IngClassConfig: ClassConfiguration{
-							IngClass: ingClassD,
-						},
-					},
-					{
-						Ing:            ing7,
-						IngClassConfig: ClassConfiguration{},
-					},
-				},
-				InactiveMembers: nil,
-			},
-		},
-		{
-			name: "load explicit group(awesome-group) - ing-1 been deleted with finalizer",
-			env: env{
-				ingClassList: []*networking.IngressClass{
-					ingClassA, ingClassB, ingClassC, ingClassD,
-				},
-				ingClassParamsList: []*elbv2api.IngressClassParams{
-					ingClassAParams, ingClassBParams, ingClassCParams,
-				},
-				ingList: []*networking.Ingress{
-					ing1BeenDeletedWithFinalizer, ing2, ing3, ing4, ing5, ing6, ing7,
-				},
-			},
-			args: args{
-				groupID: GroupID{Name: "awesome-group"},
-			},
-			want: Group{
-				ID: GroupID{Name: "awesome-group"},
-				Members: []ClassifiedIngress{
-					{
-						Ing: ing2,
-						IngClassConfig: ClassConfiguration{
-							IngClass:       ingClassB,
-							IngClassParams: ingClassBParams,
-						},
-					},
-					{
-						Ing: ing5,
-						IngClassConfig: ClassConfiguration{
-							IngClass: ingClassD,
-						},
-					},
-					{
-						Ing:            ing7,
-						IngClassConfig: ClassConfiguration{},
-					},
-				},
-				InactiveMembers: []*networking.Ingress{
-					ing1BeenDeletedWithFinalizer,
-				},
-			},
-		},
-		{
-			name: "load explicit group(awesome-group) - ing-1 been deleted without finalizer",
-			env: env{
-				ingClassList: []*networking.IngressClass{
-					ingClassA, ingClassB, ingClassC, ingClassD,
-				},
-				ingClassParamsList: []*elbv2api.IngressClassParams{
-					ingClassAParams, ingClassBParams, ingClassCParams,
-				},
-				ingList: []*networking.Ingress{
-					ing1BeenDeletedWithoutFinalizer, ing2, ing3, ing4, ing5, ing6, ing7,
-				},
-			},
-			args: args{
-				groupID: GroupID{Name: "awesome-group"},
-			},
-			want: Group{
-				ID: GroupID{Name: "awesome-group"},
-				Members: []ClassifiedIngress{
-					{
-						Ing: ing2,
-						IngClassConfig: ClassConfiguration{
-							IngClass:       ingClassB,
-							IngClassParams: ingClassBParams,
-						},
-					},
-					{
-						Ing: ing5,
-						IngClassConfig: ClassConfiguration{
-							IngClass: ingClassD,
-						},
-					},
-					{
-						Ing:            ing7,
-						IngClassConfig: ClassConfiguration{},
-					},
-				},
-				InactiveMembers: nil,
-			},
-		},
-		{
-			name: "load explicit group(awesome-group) - ing-1 have explicit high group order",
-			env: env{
-				ingClassList: []*networking.IngressClass{
-					ingClassA, ingClassB, ingClassC, ingClassD,
-				},
-				ingClassParamsList: []*elbv2api.IngressClassParams{
-					ingClassAParams, ingClassBParams, ingClassCParams,
-				},
-				ingList: []*networking.Ingress{
-					ing1WithHighGroupOrder, ing2, ing3, ing4, ing5, ing6, ing7,
-				},
-			},
-			args: args{
-				groupID: GroupID{Name: "awesome-group"},
-			},
-			want: Group{
-				ID: GroupID{Name: "awesome-group"},
-				Members: []ClassifiedIngress{
-					{
-						Ing: ing2,
-						IngClassConfig: ClassConfiguration{
-							IngClass:       ingClassB,
-							IngClassParams: ingClassBParams,
-						},
-					},
-					{
-						Ing: ing5,
-						IngClassConfig: ClassConfiguration{
-							IngClass: ingClassD,
-						},
-					},
-					{
-						Ing:            ing7,
-						IngClassConfig: ClassConfiguration{},
-					},
-					{
-						Ing: ing1WithHighGroupOrder,
-						IngClassConfig: ClassConfiguration{
-							IngClass:       ingClassA,
-							IngClassParams: ingClassAParams,
-						},
-					},
-				},
-				InactiveMembers: nil,
-			},
-		},
-		{
-			name: "load implicit group(ing-ns/ing-4)",
-			env: env{
-				ingClassList: []*networking.IngressClass{
-					ingClassA, ingClassB, ingClassC, ingClassD,
-				},
-				ingClassParamsList: []*elbv2api.IngressClassParams{
-					ingClassAParams, ingClassBParams, ingClassCParams,
-				},
-				ingList: []*networking.Ingress{
-					ing1, ing2, ing3, ing4, ing5, ing6, ing7,
-				},
-			},
-			args: args{
-				groupID: GroupID{Namespace: "ing-ns", Name: "ing-4"},
-			},
-			want: Group{
-				ID: GroupID{Namespace: "ing-ns", Name: "ing-4"},
-				Members: []ClassifiedIngress{
-					{
-						Ing: ing4,
-						IngClassConfig: ClassConfiguration{
-							IngClass: ingClassD,
-						},
-					},
-				},
-				InactiveMembers: nil,
-			},
-		},
-		{
-			name: "load implicit group(ing-ns/ing-6)",
-			env: env{
-				ingClassList: []*networking.IngressClass{
-					ingClassA, ingClassB, ingClassC, ingClassD,
-				},
-				ingClassParamsList: []*elbv2api.IngressClassParams{
-					ingClassAParams, ingClassBParams, ingClassCParams,
-				},
-				ingList: []*networking.Ingress{
-					ing1, ing2, ing3, ing4, ing5, ing6, ing7,
-				},
-			},
-			args: args{
-				groupID: GroupID{Namespace: "ing-ns", Name: "ing-6"},
-			},
-			want: Group{
-				ID: GroupID{Namespace: "ing-ns", Name: "ing-6"},
-				Members: []ClassifiedIngress{
-					{
-						Ing:            ing6,
-						IngClassConfig: ClassConfiguration{},
-					},
-				},
-				InactiveMembers: nil,
-			},
-		},
-		{
-			name: "load implicit group(ing-ns/ing-6) - ing-6 been deleted without finalizer",
-			env: env{
-				ingClassList: []*networking.IngressClass{
-					ingClassA, ingClassB, ingClassC, ingClassD,
-				},
-				ingClassParamsList: []*elbv2api.IngressClassParams{
-					ingClassAParams, ingClassBParams, ingClassCParams,
-				},
-				ingList: []*networking.Ingress{
-					ing1, ing2, ing3, ing4, ing5, ing6BeenDeletedWithoutFinalizer, ing7,
-				},
-			},
-			args: args{
-				groupID: GroupID{Namespace: "ing-ns", Name: "ing-6"},
-			},
-			want: Group{
-				ID:              GroupID{Namespace: "ing-ns", Name: "ing-6"},
-				Members:         nil,
-				InactiveMembers: nil,
-			},
-		},
-		{
-			name: "load implicit group(ing-ns/ing-6) - ing-6 been deleted with finalizer",
-			env: env{
-				ingClassList: []*networking.IngressClass{
-					ingClassA, ingClassB, ingClassC, ingClassD,
-				},
-				ingClassParamsList: []*elbv2api.IngressClassParams{
-					ingClassAParams, ingClassBParams, ingClassCParams,
-				},
-				ingList: []*networking.Ingress{
-					ing1, ing2, ing3, ing4, ing5, ing6BeenDeletedWithFinalizer, ing7,
-				},
-			},
-			args: args{
-				groupID: GroupID{Namespace: "ing-ns", Name: "ing-6"},
-			},
-			want: Group{
-				ID:              GroupID{Namespace: "ing-ns", Name: "ing-6"},
-				Members:         nil,
-				InactiveMembers: []*networking.Ingress{ing6BeenDeletedWithFinalizer},
-			},
-		},
-		{
-			name: "load implicit group(ing-ns/ing-7) - ing-7 without implicit group finalizer",
-			env: env{
-				ingClassList: []*networking.IngressClass{
-					ingClassA, ingClassB, ingClassC, ingClassD,
-				},
-				ingClassParamsList: []*elbv2api.IngressClassParams{
-					ingClassAParams, ingClassBParams, ingClassCParams,
-				},
-				ingList: []*networking.Ingress{
-					ing1, ing2, ing3, ing4, ing5, ing6, ing7,
-				},
-			},
-			args: args{
-				groupID: GroupID{Namespace: "ing-ns", Name: "ing-7"},
-			},
-			want: Group{
-				ID:              GroupID{Namespace: "ing-ns", Name: "ing-7"},
-				Members:         nil,
-				InactiveMembers: nil,
-			},
-		},
-		{
-			name: "load implicit group(ing-ns/ing-7) - ing-7 with implicit group finalizer",
-			env: env{
-				ingClassList: []*networking.IngressClass{
-					ingClassA, ingClassB, ingClassC, ingClassD,
-				},
-				ingClassParamsList: []*elbv2api.IngressClassParams{
-					ingClassAParams, ingClassBParams, ingClassCParams,
-				},
-				ingList: []*networking.Ingress{
-					ing1, ing2, ing3, ing4, ing5WithImplicitGroupFinalizer, ing6, ing7WithImplicitGroupFinalizer,
-				},
-			},
-			args: args{
-				groupID: GroupID{Namespace: "ing-ns", Name: "ing-7"},
-			},
-			want: Group{
-				ID:      GroupID{Namespace: "ing-ns", Name: "ing-7"},
-				Members: nil,
-				InactiveMembers: []*networking.Ingress{
-					ing7WithImplicitGroupFinalizer,
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			k8sSchema := runtime.NewScheme()
-			clientgoscheme.AddToScheme(k8sSchema)
-			elbv2api.AddToScheme(k8sSchema)
-			k8sClient := testclient.NewClientBuilder().WithScheme(k8sSchema).Build()
-			for _, ingClass := range tt.env.ingClassList {
-				assert.NoError(t, k8sClient.Create(context.Background(), ingClass.DeepCopy()))
-			}
-			for _, ingClassParams := range tt.env.ingClassParamsList {
-				assert.NoError(t, k8sClient.Create(context.Background(), ingClassParams.DeepCopy()))
-			}
-			for _, ing := range tt.env.ingList {
-				assert.NoError(t, k8sClient.Create(context.Background(), ing.DeepCopy()))
-				// controller-runtime versions <0.15 the fake client allowed objects
-				// to be created with a DeletionTimestamp. This no longer works so we add an
-				// annotation to the ingresses we want to delete, and
-				// IgnoreOtherFields(networking.Ingress{}, DeletionTimestamp).
-				//
-				if metav1.HasAnnotation(ing.ObjectMeta, "unit-test/delete") {
-					assert.NoError(t, k8sClient.Delete(context.Background(), ing.DeepCopy()))
-				}
-			}
-
-			annotationParser := annotations.NewSuffixAnnotationParser("alb.ingress.kubernetes.io")
-			classLoader := NewDefaultClassLoader(k8sClient, true)
-			classAnnotationMatcher := NewDefaultClassAnnotationMatcher("alb")
-			m := &defaultGroupLoader{
-				client:                             k8sClient,
-				annotationParser:                   annotationParser,
-				classLoader:                        classLoader,
-				classAnnotationMatcher:             classAnnotationMatcher,
-				manageIngressesWithoutIngressClass: false,
-			}
-			got, err := m.Load(context.Background(), tt.args.groupID)
-
-			if tt.wantErr != nil {
-				assert.Equal(t, err, tt.wantErr.Error())
-			} else {
-				assert.NoError(t, err)
-				opt := cmp.Options{
-					equality.IgnoreFakeClientPopulatedFields(),
-					equality.IgnoreOtherFields(networking.Ingress{}, "DeletionTimestamp"),
-				}
-				assert.True(t, cmp.Equal(tt.want, got, opt),
-					"diff: %v", cmp.Diff(tt.want, got, opt))
-			}
-		})
-	}
-}
+//func Test_defaultGroupLoader_Load(t *testing.T) {
+//	ingClassA := &networking.IngressClass{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name: "ing-class-a",
+//		},
+//		Spec: networking.IngressClassSpec{
+//			Controller: "ingress.k8s.aws/eks-alb",
+//			Parameters: &networking.IngressClassParametersReference{
+//				APIGroup: awssdk.String("elbv2.k8s.aws"),
+//				Kind:     "IngressClassParams",
+//				Name:     "ing-class-a-params",
+//			},
+//		},
+//	}
+//	ingClassAParams := &elbv2api.IngressClassParams{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name: "ing-class-a-params",
+//		},
+//		Spec: elbv2api.IngressClassParamsSpec{
+//			Group: &elbv2api.IngressGroup{
+//				Name: "awesome-group",
+//			},
+//		},
+//	}
+//
+//	ingClassB := &networking.IngressClass{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name: "ing-class-b",
+//		},
+//		Spec: networking.IngressClassSpec{
+//			Controller: "ingress.k8s.aws/eks-alb",
+//			Parameters: &networking.IngressClassParametersReference{
+//				APIGroup: awssdk.String("elbv2.k8s.aws"),
+//				Kind:     "IngressClassParams",
+//				Name:     "ing-class-b-params",
+//			},
+//		},
+//	}
+//
+//	ingClassBParams := &elbv2api.IngressClassParams{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name: "ing-class-b-params",
+//		},
+//		Spec: elbv2api.IngressClassParamsSpec{
+//			Group: &elbv2api.IngressGroup{
+//				Name: "awesome-group",
+//			},
+//		},
+//	}
+//
+//	ingClassC := &networking.IngressClass{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name: "ing-class-c",
+//		},
+//		Spec: networking.IngressClassSpec{
+//			Controller: "ingress.k8s.aws/alb",
+//			Parameters: &networking.IngressClassParametersReference{
+//				APIGroup: awssdk.String("elbv2.k8s.aws"),
+//				Kind:     "IngressClassParams",
+//				Name:     "ing-class-c-params",
+//			},
+//		},
+//	}
+//
+//	ingClassCParams := &elbv2api.IngressClassParams{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name: "ing-class-c-params",
+//		},
+//		Spec: elbv2api.IngressClassParamsSpec{
+//			Group: &elbv2api.IngressGroup{
+//				Name: "another-group",
+//			},
+//		},
+//	}
+//
+//	ingClassD := &networking.IngressClass{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name: "ing-class-d",
+//		},
+//		Spec: networking.IngressClassSpec{
+//			Controller: "ingress.k8s.aws/alb",
+//		},
+//	}
+//
+//	ing1 := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace: "ing-ns",
+//			Name:      "ing-1",
+//		},
+//		Spec: networking.IngressSpec{
+//			IngressClassName: awssdk.String(ingClassA.Name),
+//		},
+//	}
+//	ing1BeenDeletedWithoutFinalizer := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace:   "ing-ns",
+//			Name:        "ing-1",
+//			Annotations: map[string]string{"unit-test/delete": "true"},
+//		},
+//		Spec: networking.IngressSpec{
+//			IngressClassName: awssdk.String(ingClassA.Name),
+//		},
+//	}
+//	ing1BeenDeletedWithFinalizer := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace:   "ing-ns",
+//			Name:        "ing-1",
+//			Annotations: map[string]string{"unit-test/delete": "true"},
+//			Finalizers: []string{
+//				"group.ingress.k8s.aws/awesome-group",
+//			},
+//		},
+//		Spec: networking.IngressSpec{
+//			IngressClassName: awssdk.String(ingClassA.Name),
+//		},
+//	}
+//	ing1WithHighGroupOrder := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace: "ing-ns",
+//			Name:      "ing-1",
+//			Annotations: map[string]string{
+//				"alb.ingress.kubernetes.io/group.order": "100",
+//			},
+//		},
+//		Spec: networking.IngressSpec{
+//			IngressClassName: awssdk.String(ingClassA.Name),
+//		},
+//	}
+//
+//	ing2 := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace: "ing-ns",
+//			Name:      "ing-2",
+//		},
+//		Spec: networking.IngressSpec{
+//			IngressClassName: awssdk.String(ingClassB.Name),
+//		},
+//	}
+//	ing3 := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace: "ing-ns",
+//			Name:      "ing-3",
+//		},
+//		Spec: networking.IngressSpec{
+//			IngressClassName: awssdk.String(ingClassC.Name),
+//		},
+//	}
+//	ing4 := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace: "ing-ns",
+//			Name:      "ing-4",
+//		},
+//		Spec: networking.IngressSpec{
+//			IngressClassName: awssdk.String(ingClassD.Name),
+//		},
+//	}
+//	ing5 := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace: "ing-ns",
+//			Name:      "ing-5",
+//			Annotations: map[string]string{
+//				"alb.ingress.kubernetes.io/group.name": "awesome-group",
+//			},
+//		},
+//		Spec: networking.IngressSpec{
+//			IngressClassName: awssdk.String(ingClassD.Name),
+//		},
+//	}
+//	ing5WithImplicitGroupFinalizer := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace: "ing-ns",
+//			Name:      "ing-5",
+//			Annotations: map[string]string{
+//				"alb.ingress.kubernetes.io/group.name": "awesome-group",
+//			},
+//			Finalizers: []string{
+//				"ingress.k8s.aws/resources",
+//			},
+//		},
+//		Spec: networking.IngressSpec{
+//			IngressClassName: awssdk.String(ingClassD.Name),
+//		},
+//	}
+//
+//	ing6 := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace: "ing-ns",
+//			Name:      "ing-6",
+//			Annotations: map[string]string{
+//				"kubernetes.io/ingress.class": "alb",
+//			},
+//		},
+//	}
+//	ing6BeenDeletedWithoutFinalizer := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace: "ing-ns",
+//			Name:      "ing-6",
+//			Annotations: map[string]string{
+//				"kubernetes.io/ingress.class": "alb",
+//				"unit-test/delete":            "true",
+//			},
+//		},
+//	}
+//	ing6BeenDeletedWithFinalizer := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace: "ing-ns",
+//			Name:      "ing-6",
+//			Annotations: map[string]string{
+//				"kubernetes.io/ingress.class": "alb",
+//				"unit-test/delete":            "true",
+//			},
+//			Finalizers: []string{
+//				"ingress.k8s.aws/resources",
+//			},
+//		},
+//	}
+//	ing7 := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace: "ing-ns",
+//			Name:      "ing-7",
+//			Annotations: map[string]string{
+//				"kubernetes.io/ingress.class":          "alb",
+//				"alb.ingress.kubernetes.io/group.name": "awesome-group",
+//			},
+//		},
+//	}
+//	ing7WithImplicitGroupFinalizer := &networking.Ingress{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Namespace: "ing-ns",
+//			Name:      "ing-7",
+//			Annotations: map[string]string{
+//				"kubernetes.io/ingress.class":          "alb",
+//				"alb.ingress.kubernetes.io/group.name": "awesome-group",
+//			},
+//			Finalizers: []string{
+//				"ingress.k8s.aws/resources",
+//			},
+//		},
+//	}
+//
+//	type env struct {
+//		ingClassList       []*networking.IngressClass
+//		ingClassParamsList []*elbv2api.IngressClassParams
+//		ingList            []*networking.Ingress
+//	}
+//	type args struct {
+//		groupID GroupID
+//	}
+//	tests := []struct {
+//		name    string
+//		env     env
+//		args    args
+//		want    Group
+//		wantErr error
+//	}{
+//		{
+//			name: "load explicit group(awesome-group)",
+//			env: env{
+//				ingClassList: []*networking.IngressClass{
+//					ingClassA, ingClassB, ingClassC, ingClassD,
+//				},
+//				ingClassParamsList: []*elbv2api.IngressClassParams{
+//					ingClassAParams, ingClassBParams, ingClassCParams,
+//				},
+//				ingList: []*networking.Ingress{
+//					ing1, ing2, ing3, ing4, ing5, ing6, ing7,
+//				},
+//			},
+//			args: args{
+//				groupID: GroupID{Name: "awesome-group"},
+//			},
+//			want: Group{
+//				ID: GroupID{Name: "awesome-group"},
+//				Members: []ClassifiedIngress{
+//					{
+//						Ing: ing1,
+//						IngClassConfig: ClassConfiguration{
+//							IngClass:       ingClassA,
+//							IngClassParams: ingClassAParams,
+//						},
+//					},
+//					{
+//						Ing: ing2,
+//						IngClassConfig: ClassConfiguration{
+//							IngClass:       ingClassB,
+//							IngClassParams: ingClassBParams,
+//						},
+//					},
+//					{
+//						Ing: ing5,
+//						IngClassConfig: ClassConfiguration{
+//							IngClass: ingClassD,
+//						},
+//					},
+//					{
+//						Ing:            ing7,
+//						IngClassConfig: ClassConfiguration{},
+//					},
+//				},
+//				InactiveMembers: nil,
+//			},
+//		},
+//		{
+//			name: "load explicit group(awesome-group) - ing-1 been deleted with finalizer",
+//			env: env{
+//				ingClassList: []*networking.IngressClass{
+//					ingClassA, ingClassB, ingClassC, ingClassD,
+//				},
+//				ingClassParamsList: []*elbv2api.IngressClassParams{
+//					ingClassAParams, ingClassBParams, ingClassCParams,
+//				},
+//				ingList: []*networking.Ingress{
+//					ing1BeenDeletedWithFinalizer, ing2, ing3, ing4, ing5, ing6, ing7,
+//				},
+//			},
+//			args: args{
+//				groupID: GroupID{Name: "awesome-group"},
+//			},
+//			want: Group{
+//				ID: GroupID{Name: "awesome-group"},
+//				Members: []ClassifiedIngress{
+//					{
+//						Ing: ing2,
+//						IngClassConfig: ClassConfiguration{
+//							IngClass:       ingClassB,
+//							IngClassParams: ingClassBParams,
+//						},
+//					},
+//					{
+//						Ing: ing5,
+//						IngClassConfig: ClassConfiguration{
+//							IngClass: ingClassD,
+//						},
+//					},
+//					{
+//						Ing:            ing7,
+//						IngClassConfig: ClassConfiguration{},
+//					},
+//				},
+//				InactiveMembers: []*networking.Ingress{
+//					ing1BeenDeletedWithFinalizer,
+//				},
+//			},
+//		},
+//		{
+//			name: "load explicit group(awesome-group) - ing-1 been deleted without finalizer",
+//			env: env{
+//				ingClassList: []*networking.IngressClass{
+//					ingClassA, ingClassB, ingClassC, ingClassD,
+//				},
+//				ingClassParamsList: []*elbv2api.IngressClassParams{
+//					ingClassAParams, ingClassBParams, ingClassCParams,
+//				},
+//				ingList: []*networking.Ingress{
+//					ing1BeenDeletedWithoutFinalizer, ing2, ing3, ing4, ing5, ing6, ing7,
+//				},
+//			},
+//			args: args{
+//				groupID: GroupID{Name: "awesome-group"},
+//			},
+//			want: Group{
+//				ID: GroupID{Name: "awesome-group"},
+//				Members: []ClassifiedIngress{
+//					{
+//						Ing: ing2,
+//						IngClassConfig: ClassConfiguration{
+//							IngClass:       ingClassB,
+//							IngClassParams: ingClassBParams,
+//						},
+//					},
+//					{
+//						Ing: ing5,
+//						IngClassConfig: ClassConfiguration{
+//							IngClass: ingClassD,
+//						},
+//					},
+//					{
+//						Ing:            ing7,
+//						IngClassConfig: ClassConfiguration{},
+//					},
+//				},
+//				InactiveMembers: nil,
+//			},
+//		},
+//		{
+//			name: "load explicit group(awesome-group) - ing-1 have explicit high group order",
+//			env: env{
+//				ingClassList: []*networking.IngressClass{
+//					ingClassA, ingClassB, ingClassC, ingClassD,
+//				},
+//				ingClassParamsList: []*elbv2api.IngressClassParams{
+//					ingClassAParams, ingClassBParams, ingClassCParams,
+//				},
+//				ingList: []*networking.Ingress{
+//					ing1WithHighGroupOrder, ing2, ing3, ing4, ing5, ing6, ing7,
+//				},
+//			},
+//			args: args{
+//				groupID: GroupID{Name: "awesome-group"},
+//			},
+//			want: Group{
+//				ID: GroupID{Name: "awesome-group"},
+//				Members: []ClassifiedIngress{
+//					{
+//						Ing: ing2,
+//						IngClassConfig: ClassConfiguration{
+//							IngClass:       ingClassB,
+//							IngClassParams: ingClassBParams,
+//						},
+//					},
+//					{
+//						Ing: ing5,
+//						IngClassConfig: ClassConfiguration{
+//							IngClass: ingClassD,
+//						},
+//					},
+//					{
+//						Ing:            ing7,
+//						IngClassConfig: ClassConfiguration{},
+//					},
+//					{
+//						Ing: ing1WithHighGroupOrder,
+//						IngClassConfig: ClassConfiguration{
+//							IngClass:       ingClassA,
+//							IngClassParams: ingClassAParams,
+//						},
+//					},
+//				},
+//				InactiveMembers: nil,
+//			},
+//		},
+//		{
+//			name: "load implicit group(ing-ns/ing-4)",
+//			env: env{
+//				ingClassList: []*networking.IngressClass{
+//					ingClassA, ingClassB, ingClassC, ingClassD,
+//				},
+//				ingClassParamsList: []*elbv2api.IngressClassParams{
+//					ingClassAParams, ingClassBParams, ingClassCParams,
+//				},
+//				ingList: []*networking.Ingress{
+//					ing1, ing2, ing3, ing4, ing5, ing6, ing7,
+//				},
+//			},
+//			args: args{
+//				groupID: GroupID{Namespace: "ing-ns", Name: "ing-4"},
+//			},
+//			want: Group{
+//				ID: GroupID{Namespace: "ing-ns", Name: "ing-4"},
+//				Members: []ClassifiedIngress{
+//					{
+//						Ing: ing4,
+//						IngClassConfig: ClassConfiguration{
+//							IngClass: ingClassD,
+//						},
+//					},
+//				},
+//				InactiveMembers: nil,
+//			},
+//		},
+//		{
+//			name: "load implicit group(ing-ns/ing-6)",
+//			env: env{
+//				ingClassList: []*networking.IngressClass{
+//					ingClassA, ingClassB, ingClassC, ingClassD,
+//				},
+//				ingClassParamsList: []*elbv2api.IngressClassParams{
+//					ingClassAParams, ingClassBParams, ingClassCParams,
+//				},
+//				ingList: []*networking.Ingress{
+//					ing1, ing2, ing3, ing4, ing5, ing6, ing7,
+//				},
+//			},
+//			args: args{
+//				groupID: GroupID{Namespace: "ing-ns", Name: "ing-6"},
+//			},
+//			want: Group{
+//				ID: GroupID{Namespace: "ing-ns", Name: "ing-6"},
+//				Members: []ClassifiedIngress{
+//					{
+//						Ing:            ing6,
+//						IngClassConfig: ClassConfiguration{},
+//					},
+//				},
+//				InactiveMembers: nil,
+//			},
+//		},
+//		{
+//			name: "load implicit group(ing-ns/ing-6) - ing-6 been deleted without finalizer",
+//			env: env{
+//				ingClassList: []*networking.IngressClass{
+//					ingClassA, ingClassB, ingClassC, ingClassD,
+//				},
+//				ingClassParamsList: []*elbv2api.IngressClassParams{
+//					ingClassAParams, ingClassBParams, ingClassCParams,
+//				},
+//				ingList: []*networking.Ingress{
+//					ing1, ing2, ing3, ing4, ing5, ing6BeenDeletedWithoutFinalizer, ing7,
+//				},
+//			},
+//			args: args{
+//				groupID: GroupID{Namespace: "ing-ns", Name: "ing-6"},
+//			},
+//			want: Group{
+//				ID:              GroupID{Namespace: "ing-ns", Name: "ing-6"},
+//				Members:         nil,
+//				InactiveMembers: nil,
+//			},
+//		},
+//		{
+//			name: "load implicit group(ing-ns/ing-6) - ing-6 been deleted with finalizer",
+//			env: env{
+//				ingClassList: []*networking.IngressClass{
+//					ingClassA, ingClassB, ingClassC, ingClassD,
+//				},
+//				ingClassParamsList: []*elbv2api.IngressClassParams{
+//					ingClassAParams, ingClassBParams, ingClassCParams,
+//				},
+//				ingList: []*networking.Ingress{
+//					ing1, ing2, ing3, ing4, ing5, ing6BeenDeletedWithFinalizer, ing7,
+//				},
+//			},
+//			args: args{
+//				groupID: GroupID{Namespace: "ing-ns", Name: "ing-6"},
+//			},
+//			want: Group{
+//				ID:              GroupID{Namespace: "ing-ns", Name: "ing-6"},
+//				Members:         nil,
+//				InactiveMembers: []*networking.Ingress{ing6BeenDeletedWithFinalizer},
+//			},
+//		},
+//		{
+//			name: "load implicit group(ing-ns/ing-7) - ing-7 without implicit group finalizer",
+//			env: env{
+//				ingClassList: []*networking.IngressClass{
+//					ingClassA, ingClassB, ingClassC, ingClassD,
+//				},
+//				ingClassParamsList: []*elbv2api.IngressClassParams{
+//					ingClassAParams, ingClassBParams, ingClassCParams,
+//				},
+//				ingList: []*networking.Ingress{
+//					ing1, ing2, ing3, ing4, ing5, ing6, ing7,
+//				},
+//			},
+//			args: args{
+//				groupID: GroupID{Namespace: "ing-ns", Name: "ing-7"},
+//			},
+//			want: Group{
+//				ID:              GroupID{Namespace: "ing-ns", Name: "ing-7"},
+//				Members:         nil,
+//				InactiveMembers: nil,
+//			},
+//		},
+//		{
+//			name: "load implicit group(ing-ns/ing-7) - ing-7 with implicit group finalizer",
+//			env: env{
+//				ingClassList: []*networking.IngressClass{
+//					ingClassA, ingClassB, ingClassC, ingClassD,
+//				},
+//				ingClassParamsList: []*elbv2api.IngressClassParams{
+//					ingClassAParams, ingClassBParams, ingClassCParams,
+//				},
+//				ingList: []*networking.Ingress{
+//					ing1, ing2, ing3, ing4, ing5WithImplicitGroupFinalizer, ing6, ing7WithImplicitGroupFinalizer,
+//				},
+//			},
+//			args: args{
+//				groupID: GroupID{Namespace: "ing-ns", Name: "ing-7"},
+//			},
+//			want: Group{
+//				ID:      GroupID{Namespace: "ing-ns", Name: "ing-7"},
+//				Members: nil,
+//				InactiveMembers: []*networking.Ingress{
+//					ing7WithImplicitGroupFinalizer,
+//				},
+//			},
+//		},
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			ctrl := gomock.NewController(t)
+//			defer ctrl.Finish()
+//
+//			k8sSchema := runtime.NewScheme()
+//			clientgoscheme.AddToScheme(k8sSchema)
+//			elbv2api.AddToScheme(k8sSchema)
+//			k8sClient := testclient.NewClientBuilder().WithScheme(k8sSchema).Build()
+//			for _, ingClass := range tt.env.ingClassList {
+//				assert.NoError(t, k8sClient.Create(context.Background(), ingClass.DeepCopy()))
+//			}
+//			for _, ingClassParams := range tt.env.ingClassParamsList {
+//				assert.NoError(t, k8sClient.Create(context.Background(), ingClassParams.DeepCopy()))
+//			}
+//			for _, ing := range tt.env.ingList {
+//				assert.NoError(t, k8sClient.Create(context.Background(), ing.DeepCopy()))
+//				// controller-runtime versions <0.15 the fake client allowed objects
+//				// to be created with a DeletionTimestamp. This no longer works so we add an
+//				// annotation to the ingresses we want to delete, and
+//				// IgnoreOtherFields(networking.Ingress{}, DeletionTimestamp).
+//				//
+//				if metav1.HasAnnotation(ing.ObjectMeta, "unit-test/delete") {
+//					assert.NoError(t, k8sClient.Delete(context.Background(), ing.DeepCopy()))
+//				}
+//			}
+//
+//			annotationParser := annotations.NewSuffixAnnotationParser("alb.ingress.kubernetes.io")
+//			classLoader := NewDefaultClassLoader(k8sClient, true)
+//			classAnnotationMatcher := NewDefaultClassAnnotationMatcher("alb")
+//			m := &defaultGroupLoader{
+//				client:                             k8sClient,
+//				annotationParser:                   annotationParser,
+//				classLoader:                        classLoader,
+//				classAnnotationMatcher:             classAnnotationMatcher,
+//				manageIngressesWithoutIngressClass: false,
+//			}
+//			got, err := m.Load(context.Background(), tt.args.groupID)
+//
+//			if tt.wantErr != nil {
+//				assert.Equal(t, err, tt.wantErr.Error())
+//			} else {
+//				assert.NoError(t, err)
+//				opt := cmp.Options{
+//					equality.IgnoreFakeClientPopulatedFields(),
+//					equality.IgnoreOtherFields(networking.Ingress{}, "DeletionTimestamp"),
+//				}
+//				assert.True(t, cmp.Equal(tt.want, got, opt),
+//					"diff: %v", cmp.Diff(tt.want, got, opt))
+//			}
+//		})
+//	}
+//}
 
 func Test_defaultGroupLoader_LoadGroupIDsPendingFinalization(t *testing.T) {
 	type args struct {

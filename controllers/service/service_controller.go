@@ -28,8 +28,8 @@ import (
 )
 
 const (
-	serviceFinalizer        = "service.k8s.aws/resources"
-	serviceTagPrefix        = "service.k8s.aws"
+	serviceFinalizer        = "service.eks.aws/resources"
+	serviceTagPrefix        = "service.eks.aws"
 	serviceAnnotationPrefix = "service.beta.kubernetes.io"
 	controllerName          = "service"
 )

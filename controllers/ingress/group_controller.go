@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	ingressTagPrefix = "ingress.k8s.aws"
+	ingressTagPrefix = "ingress.eks.aws"
 	controllerName   = "ingress"
 
 	// the groupVersion of used Ingress & IngressClass resource.
