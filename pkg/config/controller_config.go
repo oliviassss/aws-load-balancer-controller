@@ -27,6 +27,8 @@ const (
 	flagBackendSecurityGroup                         = "backend-security-group"
 	flagEnableEndpointSlices                         = "enable-endpoint-slices"
 	flagDisableRestrictedSGRules                     = "disable-restricted-sg-rules"
+	flagServiceLinkedRoleArn                         = "service-linked-role-arn"
+	flagClusterRoleArn                               = "cluster-role-arn"
 	defaultLogLevel                                  = "info"
 	defaultMaxConcurrentReconciles                   = 3
 	defaultMaxExponentialBackoffDelay                = time.Second * 1000
@@ -103,6 +105,10 @@ type ControllerConfig struct {
 	DisableRestrictedSGRules bool
 
 	FeatureGates FeatureGates
+
+	ServiceLinkedRoleARN string
+
+	ClusterRoleARN string
 }
 
 // BindFlags binds the command line flags to the fields in the config object
@@ -134,6 +140,9 @@ func (cfg *ControllerConfig) BindFlags(fs *pflag.FlagSet) {
 		"Disable the usage of restricted security group rules")
 	fs.StringToStringVar(&cfg.ServiceTargetENISGTags, flagServiceTargetENISGTags, nil,
 		"AWS Tags, in addition to cluster tags, for finding the target ENI security group to which to add inbound rules from NLBs")
+	fs.StringVar(&cfg.ServiceLinkedRoleARN, flagServiceLinkedRoleArn, "", "Set the controller's service linked role")
+	fs.StringVar(&cfg.ClusterRoleARN, flagClusterRoleArn, "", "Set the controller's cluster role")
+
 	cfg.FeatureGates.BindFlags(fs)
 	cfg.AWSConfig.BindFlags(fs)
 	cfg.RuntimeConfig.BindFlags(fs)

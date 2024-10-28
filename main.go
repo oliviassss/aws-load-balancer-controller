@@ -17,8 +17,17 @@ limitations under the License.
 package main
 
 import (
+	"context"
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
+	"github.com/aws/aws-sdk-go-v2/aws/ratelimit"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
+	awsCFG "github.com/aws/aws-sdk-go-v2/config"
+	smithymiddleware "github.com/aws/smithy-go/middleware"
 	"k8s.io/client-go/util/workqueue"
 	"os"
+	epresolver "sigs.k8s.io/aws-load-balancer-controller/pkg/aws/endpoints"
+	"sigs.k8s.io/aws-load-balancer-controller/pkg/aws/provider"
 
 	elbv2deploy "sigs.k8s.io/aws-load-balancer-controller/pkg/deploy/elbv2"
 
@@ -81,7 +90,27 @@ func main() {
 	ctrl.SetLogger(appLogger)
 	klog.SetLoggerWithOptions(appLogger, klog.ContextualLogger(true))
 
-	cloud, err := aws.NewCloud(controllerCFG.AWSConfig, metrics.Registry, ctrl.Log, nil)
+	endpointsResolver := epresolver.NewResolver(controllerCFG.AWSConfig.AWSEndpoints)
+	ec2IMDSEndpointMode := aws.GetEc2IMDSEndpointMode()
+	awsConfig, err := awsCFG.LoadDefaultConfig(context.TODO(),
+		awsCFG.WithRegion(controllerCFG.AWSConfig.Region),
+		awsCFG.WithRetryer(func() awssdk.Retryer {
+			return retry.NewStandard(func(o *retry.StandardOptions) {
+				o.RateLimiter = ratelimit.None
+				o.MaxAttempts = controllerCFG.AWSConfig.MaxRetries
+			})
+		}),
+		awsCFG.WithEC2IMDSEndpointMode(ec2IMDSEndpointMode),
+		awsCFG.WithAPIOptions([]func(stack *smithymiddleware.Stack) error{
+			awsmiddleware.AddUserAgentKeyValue(aws.UserAgent, version.GitVersion),
+		}),
+	)
+	splitRoleAWSClientsProvider, err := provider.NewDefaultSplitRoleAWSClientsProvider(awsConfig, endpointsResolver, controllerCFG.ServiceLinkedRoleARN, controllerCFG.ClusterRoleARN)
+	if err != nil {
+		setupLog.Error(err, "unable to initialize splitRoleAWSClientsProvider")
+		os.Exit(1)
+	}
+	cloud, err := aws.NewCloud(controllerCFG.AWSConfig, metrics.Registry, ctrl.Log, splitRoleAWSClientsProvider)
 	if err != nil {
 		setupLog.Error(err, "unable to initialize AWS cloud")
 		os.Exit(1)

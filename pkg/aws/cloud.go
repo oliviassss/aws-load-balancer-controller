@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/ratelimit"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	smithymiddleware "github.com/aws/smithy-go/middleware"
 	"net"
@@ -17,7 +18,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/aws-load-balancer-controller/pkg/aws/services"
 )
 
-const userAgent = "elbv2.k8s.aws"
+const UserAgent = "elbv2.k8s.aws"
 
 type Cloud interface {
 	// EC2 provides API to AWS EC2
@@ -61,24 +61,7 @@ type Cloud interface {
 
 // NewCloud constructs new Cloud implementation.
 func NewCloud(cfg CloudConfig, metricsRegisterer prometheus.Registerer, logger logr.Logger, awsClientsProvider provider.AWSClientsProvider) (Cloud, error) {
-	hasIPv4 := true
-	addrs, err := net.InterfaceAddrs()
-	if err == nil {
-		hasIPv4 = false
-		for _, addr := range addrs {
-			str := addr.String()
-			if !strings.HasPrefix(str, "127.") && !strings.Contains(str, ":") {
-				hasIPv4 = true
-				break
-			}
-		}
-	}
-	var ec2IMDSEndpointMode imds.EndpointModeState
-	if !hasIPv4 {
-		ec2IMDSEndpointMode = imds.EndpointModeStateIPv6
-	} else {
-		ec2IMDSEndpointMode = imds.EndpointModeStateIPv4
-	}
+	ec2IMDSEndpointMode := GetEc2IMDSEndpointMode()
 	endpointsResolver := epresolver.NewResolver(cfg.AWSEndpoints)
 	ec2MetadataCfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRetryMaxAttempts(cfg.MaxRetries),
@@ -111,7 +94,7 @@ func NewCloud(cfg CloudConfig, metricsRegisterer prometheus.Registerer, logger l
 		}),
 		config.WithEC2IMDSEndpointMode(ec2IMDSEndpointMode),
 		config.WithAPIOptions([]func(stack *smithymiddleware.Stack) error{
-			awsmiddleware.AddUserAgentKeyValue(userAgent, version.GitVersion),
+			awsmiddleware.AddUserAgentKeyValue(UserAgent, version.GitVersion),
 		}),
 	)
 
@@ -275,4 +258,26 @@ func (c *defaultCloud) Region() string {
 
 func (c *defaultCloud) VpcID() string {
 	return c.cfg.VpcID
+}
+
+func GetEc2IMDSEndpointMode() imds.EndpointModeState {
+	hasIPv4 := true
+	addrs, err := net.InterfaceAddrs()
+	if err == nil {
+		hasIPv4 = false
+		for _, addr := range addrs {
+			str := addr.String()
+			if !strings.HasPrefix(str, "127.") && !strings.Contains(str, ":") {
+				hasIPv4 = true
+				break
+			}
+		}
+	}
+	var ec2IMDSEndpointMode imds.EndpointModeState
+	if !hasIPv4 {
+		ec2IMDSEndpointMode = imds.EndpointModeStateIPv6
+	} else {
+		ec2IMDSEndpointMode = imds.EndpointModeStateIPv4
+	}
+	return ec2IMDSEndpointMode
 }
