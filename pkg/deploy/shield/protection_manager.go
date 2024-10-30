@@ -17,7 +17,7 @@ const (
 	// service subscription rarely changes, cache it with longer period.
 	defaultSubscriptionStateCacheTTL = 2 * time.Hour
 	subscriptionStateCacheKey        = "subscriptionState"
-	tagKeyK8sCluster                 = "elbv2.k8s.aws/cluster"
+	//tagKeyK8sCluster                 = "elbv2.k8s.aws/cluster"
 )
 
 type ProtectionManager interface {
@@ -35,9 +35,10 @@ type ProtectionManager interface {
 	IsSubscribed(ctx context.Context) (bool, error)
 }
 
-func NewDefaultProtectionManager(shieldClient services.Shield, clusterName string, logger logr.Logger) *defaultProtectionManager {
+func NewDefaultProtectionManager(shieldClient services.Shield, clusterTagPrefix string, clusterName string, logger logr.Logger) *defaultProtectionManager {
 	return &defaultProtectionManager{
 		shieldClient:                        shieldClient,
+		clusterTagKey:                       clusterTagPrefix + "/cluster",
 		clusterName:                         clusterName,
 		logger:                              logger,
 		protectionInfoByResourceARNCache:    cache.NewExpiring(),
@@ -50,9 +51,10 @@ func NewDefaultProtectionManager(shieldClient services.Shield, clusterName strin
 var _ ProtectionManager = &defaultProtectionManager{}
 
 type defaultProtectionManager struct {
-	shieldClient services.Shield
-	clusterName  string
-	logger       logr.Logger
+	shieldClient  services.Shield
+	clusterTagKey string
+	clusterName   string
+	logger        logr.Logger
 
 	protectionInfoByResourceARNCache    *cache.Expiring
 	protectionInfoByResourceARNCacheTTL time.Duration
@@ -69,16 +71,16 @@ func (m *defaultProtectionManager) CreateProtection(ctx context.Context, resourc
 	req := &shieldsdk.CreateProtectionInput{
 		ResourceArn: awssdk.String(resourceARN),
 		Name:        awssdk.String(protectionName),
-		Tags: []*shieldsdk.Tag{
-			&shieldsdk.Tag{
-				Key:   awssdk.String(tagKeyK8sCluster),
+		Tags: []shieldtypes.Tag{
+			{
+				Key:   awssdk.String(m.clusterTagKey),
 				Value: awssdk.String(m.clusterName),
 			},
 		},
 	}
 	m.logger.Info("enabling shield protection",
 		"resourceARN", resourceARN,
-		"protectionName", protectionName, "TagKey", tagKeyK8sCluster, "TagValue", m.clusterName)
+		"protectionName", protectionName, "TagKey", m.clusterTagKey, "TagValue", m.clusterName)
 	resp, err := m.shieldClient.CreateProtectionWithContext(ctx, req)
 	if err != nil {
 		return "", err

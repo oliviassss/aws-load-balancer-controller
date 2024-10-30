@@ -56,10 +56,11 @@ type SecurityGroupManager interface {
 }
 
 // NewDefaultSecurityGroupManager constructs new defaultSecurityGroupManager.
-func NewDefaultSecurityGroupManager(ec2Client services.EC2, logger logr.Logger) *defaultSecurityGroupManager {
+func NewDefaultSecurityGroupManager(ec2Client services.EC2, clusterTagPrefix string, logger logr.Logger) *defaultSecurityGroupManager {
 	return &defaultSecurityGroupManager{
-		ec2Client: ec2Client,
-		logger:    logger,
+		ec2Client:        ec2Client,
+		tagKeyK8sCluster: clusterTagPrefix + "/cluster",
+		logger:           logger,
 
 		sgInfoCache:      cache.NewExpiring(),
 		sgInfoCacheMutex: sync.RWMutex{},
@@ -71,8 +72,9 @@ var _ SecurityGroupManager = &defaultSecurityGroupManager{}
 
 // default implementation for SecurityGroupManager
 type defaultSecurityGroupManager struct {
-	ec2Client services.EC2
-	logger    logr.Logger
+	ec2Client        services.EC2
+	tagKeyK8sCluster string
+	logger           logr.Logger
 
 	sgInfoCache      *cache.Expiring
 	sgInfoCacheMutex sync.RWMutex
@@ -128,18 +130,18 @@ func (m *defaultSecurityGroupManager) FetchSGInfosByRequest(ctx context.Context,
 
 func (m *defaultSecurityGroupManager) AuthorizeSGIngress(ctx context.Context, sgID string, permissions []IPPermissionInfo, clusterName string) error {
 	sdkIPPermissions := buildSDKIPPermissions(permissions)
-	tags := []*ec2sdk.Tag{
-		&ec2sdk.Tag{
-			Key:   awssdk.String(tagKeyK8sCluster),
+	tags := []ec2types.Tag{
+		{
+			Key:   awssdk.String(m.tagKeyK8sCluster),
 			Value: awssdk.String(clusterName),
 		},
 	}
 	req := &ec2sdk.AuthorizeSecurityGroupIngressInput{
 		GroupId:       awssdk.String(sgID),
 		IpPermissions: sdkIPPermissions,
-		TagSpecifications: []*ec2sdk.TagSpecification{
+		TagSpecifications: []ec2types.TagSpecification{
 			{
-				ResourceType: awssdk.String("security-group-rule"),
+				ResourceType: ec2types.ResourceTypeSecurityGroupRule,
 				Tags:         tags,
 			},
 		},

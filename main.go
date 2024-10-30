@@ -106,7 +106,7 @@ func main() {
 
 	podInfoRepo := k8s.NewDefaultPodInfoRepo(clientSet.CoreV1().RESTClient(), controllerCFG.RuntimeConfig.WatchNamespace, ctrl.Log)
 	finalizerManager := k8s.NewDefaultFinalizerManager(mgr.GetClient(), ctrl.Log)
-	sgManager := networking.NewDefaultSecurityGroupManager(cloud.EC2(), ctrl.Log)
+	sgManager := networking.NewDefaultSecurityGroupManager(cloud.EC2(), controllerCFG.ResourceTrackingConfiguration[config.ClusterTagPrefixKey], ctrl.Log)
 	sgReconciler := networking.NewDefaultSecurityGroupReconciler(sgManager, ctrl.Log)
 	azInfoProvider := networking.NewDefaultAZInfoProvider(cloud.EC2(), ctrl.Log.WithName("az-info-provider"))
 	vpcInfoProvider := networking.NewDefaultVPCInfoProvider(cloud.EC2(), ctrl.Log.WithName("vpc-info-provider"))
