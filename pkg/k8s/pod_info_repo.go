@@ -94,8 +94,8 @@ func (r *defaultPodInfoRepo) Start(ctx context.Context) error {
 
 // WaitForCacheSync waits for the initial sync of pod information repository.
 func (r *defaultPodInfoRepo) WaitForCacheSync(ctx context.Context) error {
-	r.logger.Info("wait for pod info repo cache to sync", "timeout until", r.cacheSyncTimeout)
-	return wait.PollImmediateUntil(r.cacheSyncTimeout, func() (bool, error) {
+	r.logger.Info("run WaitForCacheSync")
+	return wait.PollImmediateUntil(2*time.Second, func() (bool, error) {
 		lastSyncResourceVersion := r.rt.LastSyncResourceVersion()
 		return lastSyncResourceVersion != "", nil
 	}, ctx.Done())

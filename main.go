@@ -19,6 +19,7 @@ package main
 import (
 	"k8s.io/client-go/util/workqueue"
 	"os"
+	"time"
 
 	elbv2deploy "sigs.k8s.io/aws-load-balancer-controller/pkg/deploy/elbv2"
 
@@ -190,7 +191,8 @@ func main() {
 	//+kubebuilder:scaffold:builder
 
 	go func() {
-		setupLog.Info("starting podInfo repo")
+		setupLog.Info("sleep 30s before starting podInfo repo")
+		time.Sleep(30 * time.Second)
 		if err := podInfoRepo.Start(ctx); err != nil {
 			setupLog.Error(err, "problem running podInfo repo")
 			os.Exit(1)
