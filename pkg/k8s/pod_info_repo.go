@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	resourceTypePods        = "pods"
-	waitCacheSyncPollPeriod = 2 * time.Second
+	resourceTypePods = "pods"
 )
 
 // PodInfoRepo provides access to pod information within cluster.
@@ -32,15 +31,16 @@ type PodInfoRepo interface {
 // * watchNamespace is the namespace to monitor pod spec.
 //   - if watchNamespace is "", this repo monitors pods in all namespaces
 //   - if watchNamespace is not "", this repo monitors pods in specific namespace
-func NewDefaultPodInfoRepo(getter cache.Getter, watchNamespace string, logger logr.Logger) *defaultPodInfoRepo {
+func NewDefaultPodInfoRepo(getter cache.Getter, watchNamespace string, cacheSyncTimeout time.Duration, logger logr.Logger) *defaultPodInfoRepo {
 	store := NewConversionStore(podInfoConversionFunc, podInfoKeyFunc)
 	lw := cache.NewListWatchFromClient(getter, resourceTypePods, watchNamespace, fields.Everything())
 	rt := cache.NewReflector(lw, &corev1.Pod{}, store, 0)
 
 	repo := &defaultPodInfoRepo{
-		store:  store,
-		rt:     rt,
-		logger: logger,
+		store:            store,
+		rt:               rt,
+		logger:           logger,
+		cacheSyncTimeout: cacheSyncTimeout,
 	}
 	return repo
 }
@@ -50,9 +50,10 @@ var _ manager.Runnable = &defaultPodInfoRepo{}
 
 // default implementation for PodInfoRepo
 type defaultPodInfoRepo struct {
-	store  *ConversionStore
-	rt     *cache.Reflector
-	logger logr.Logger
+	store            *ConversionStore
+	rt               *cache.Reflector
+	logger           logr.Logger
+	cacheSyncTimeout time.Duration
 }
 
 // Get returns PodInfo specified with specific podKey, and whether it exists.
@@ -93,7 +94,8 @@ func (r *defaultPodInfoRepo) Start(ctx context.Context) error {
 
 // WaitForCacheSync waits for the initial sync of pod information repository.
 func (r *defaultPodInfoRepo) WaitForCacheSync(ctx context.Context) error {
-	return wait.PollImmediateUntil(waitCacheSyncPollPeriod, func() (bool, error) {
+	r.logger.Info("wait for pod info repo cache to sync", "timeout until", r.cacheSyncTimeout)
+	return wait.PollImmediateUntil(r.cacheSyncTimeout, func() (bool, error) {
 		lastSyncResourceVersion := r.rt.LastSyncResourceVersion()
 		return lastSyncResourceVersion != "", nil
 	}, ctx.Done())

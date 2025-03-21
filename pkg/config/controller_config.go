@@ -29,14 +29,17 @@ const (
 	flagBackendSecurityGroup                         = "backend-security-group"
 	flagEnableEndpointSlices                         = "enable-endpoint-slices"
 	flagDisableRestrictedSGRules                     = "disable-restricted-sg-rules"
-	defaultLogLevel                                  = "info"
-	defaultMaxConcurrentReconciles                   = 3
-	defaultMaxExponentialBackoffDelay                = time.Second * 1000
-	defaultSSLPolicy                                 = "ELBSecurityPolicy-2016-08"
-	defaultEnableBackendSG                           = true
-	defaultEnableEndpointSlices                      = false
-	defaultDisableRestrictedSGRules                  = false
-	defaultLbStabilizationMonitorInterval            = time.Second * 120
+	flagCacheSyncTimeout                             = "cache-sync-timeout"
+
+	defaultLogLevel                       = "info"
+	defaultMaxConcurrentReconciles        = 3
+	defaultMaxExponentialBackoffDelay     = time.Second * 1000
+	defaultSSLPolicy                      = "ELBSecurityPolicy-2016-08"
+	defaultEnableBackendSG                = true
+	defaultEnableEndpointSlices           = false
+	defaultDisableRestrictedSGRules       = false
+	defaultLbStabilizationMonitorInterval = time.Second * 120
+	defaultCacheSyncTimeout               = 1 * time.Minute
 )
 
 var (
@@ -111,6 +114,9 @@ type ControllerConfig struct {
 	// LBStabilizationMonitorInterval specifies the duration of interval to monitor the load balancer state for stabilization
 	LBStabilizationMonitorInterval time.Duration
 
+	// cacheSyncTimeout specifies the timeout to wait for pod info repo cache to sync during controller startup
+	CacheSyncTimeout time.Duration
+
 	FeatureGates FeatureGates
 }
 
@@ -147,6 +153,8 @@ func (cfg *ControllerConfig) BindFlags(fs *pflag.FlagSet) {
 		"Disable the usage of restricted security group rules")
 	fs.StringToStringVar(&cfg.ServiceTargetENISGTags, flagServiceTargetENISGTags, nil,
 		"AWS Tags, in addition to cluster tags, for finding the target ENI security group to which to add inbound rules from NLBs")
+	fs.DurationVar(&cfg.CacheSyncTimeout, flagCacheSyncTimeout, defaultCacheSyncTimeout,
+		"Timeout to wait for pod info repo cache to sync during controller startup")
 	cfg.FeatureGates.BindFlags(fs)
 	cfg.AWSConfig.BindFlags(fs)
 	cfg.RuntimeConfig.BindFlags(fs)
