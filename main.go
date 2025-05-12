@@ -134,7 +134,7 @@ func main() {
 		setupLog.Error(err, "unable to build REST config")
 		os.Exit(1)
 	}
-	rtOpts := config.BuildRuntimeOptions(controllerCFG.RuntimeConfig, scheme)
+	rtOpts := config.BuildRuntimeOptions(controllerCFG.RuntimeConfig, scheme, setupLog)
 	mgr, err := ctrl.NewManager(restCFG, rtOpts)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

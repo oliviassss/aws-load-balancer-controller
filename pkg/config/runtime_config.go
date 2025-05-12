@@ -3,6 +3,8 @@ package config
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
+	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"time"
 
@@ -72,16 +74,16 @@ type RuntimeConfig struct {
 type LoggingCache struct {
 	cache.Cache
 	scheme *runtime.Scheme
+	logger logr.Logger
 }
 
 func (l *LoggingCache) GetInformer(ctx context.Context, obj client.Object, opts ...cache.InformerGetOption) (cache.Informer, error) {
+	l.logger.Info(">>>>>>>>>>>>>>>>> GetInformer called", "type", fmt.Sprintf("%T", obj))
 	gvk, err := apiutil.GVKForObject(obj, l.scheme)
 	if err != nil {
-		log := ctrl.Log.WithName("informer").WithValues("object", obj)
-		log.Error(err, "Failed to determine GVK")
+		l.logger.Error(err, "Failed to determine GVK", "object", fmt.Sprintf("%T", obj))
 	} else {
-		log := ctrl.Log.WithName("informer").WithValues("gvk", gvk.String())
-		log.Info("Creating informer")
+		l.logger.Info("Creating informer", "gvk", gvk.String(), "obj", fmt.Sprintf("%T", obj))
 	}
 	return l.Cache.GetInformer(ctx, obj, opts...)
 }
@@ -133,7 +135,7 @@ func BuildRestConfig(rtCfg RuntimeConfig) (*rest.Config, error) {
 }
 
 // BuildRuntimeOptions builds the options for the controller runtime based on config
-func BuildRuntimeOptions(rtCfg RuntimeConfig, scheme *runtime.Scheme) ctrl.Options {
+func BuildRuntimeOptions(rtCfg RuntimeConfig, scheme *runtime.Scheme, logger logr.Logger) ctrl.Options {
 	opt := ctrl.Options{
 		Scheme:                     scheme,
 		HealthProbeBindAddress:     rtCfg.HealthProbeBindAddress,
@@ -192,8 +194,10 @@ func BuildRuntimeOptions(rtCfg RuntimeConfig, scheme *runtime.Scheme) ctrl.Optio
 		return &LoggingCache{
 			Cache:  baseCache,
 			scheme: scheme,
+			logger: logger.WithName("informer debugger"),
 		}, nil
 	}
+	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>> Using LoggingCache for runtime informer setup")
 
 	return opt
 }
