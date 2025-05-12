@@ -1,7 +1,9 @@
 package config
 
 import (
+	"context"
 	"crypto/tls"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -65,6 +67,23 @@ type RuntimeConfig struct {
 	WebhookCertDir          string
 	WebhookCertName         string
 	WebhookKeyName          string
+}
+
+type LoggingCache struct {
+	cache.Cache
+	scheme *runtime.Scheme
+}
+
+func (l *LoggingCache) GetInformer(ctx context.Context, obj client.Object, opts ...cache.InformerGetOption) (cache.Informer, error) {
+	gvk, err := apiutil.GVKForObject(obj, l.scheme)
+	if err != nil {
+		log := ctrl.Log.WithName("informer").WithValues("object", obj)
+		log.Error(err, "Failed to determine GVK")
+	} else {
+		log := ctrl.Log.WithName("informer").WithValues("gvk", gvk.String())
+		log.Info("Creating informer")
+	}
+	return l.Cache.GetInformer(ctx, obj, opts...)
 }
 
 // BindFlags binds the command line flags to the fields in the config object
@@ -162,6 +181,18 @@ func BuildRuntimeOptions(rtCfg RuntimeConfig, scheme *runtime.Scheme) ctrl.Optio
 		opt.Cache.DefaultNamespaces = map[string]cache.Config{
 			rtCfg.WatchNamespace: {},
 		}
+	}
+
+	// Inject custom NewCache logic
+	opt.NewCache = func(config *rest.Config, cacheOpts cache.Options) (cache.Cache, error) {
+		baseCache, err := cache.New(config, cacheOpts)
+		if err != nil {
+			return nil, err
+		}
+		return &LoggingCache{
+			Cache:  baseCache,
+			scheme: scheme,
+		}, nil
 	}
 
 	return opt
