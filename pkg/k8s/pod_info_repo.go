@@ -93,10 +93,16 @@ func (r *defaultPodInfoRepo) Start(ctx context.Context) error {
 
 // WaitForCacheSync waits for the initial sync of pod information repository.
 func (r *defaultPodInfoRepo) WaitForCacheSync(ctx context.Context) error {
-	return wait.PollImmediateUntil(waitCacheSyncPollPeriod, func() (bool, error) {
-		lastSyncResourceVersion := r.rt.LastSyncResourceVersion()
-		return lastSyncResourceVersion != "", nil
-	}, ctx.Done())
+	//return wait.PollImmediateUntil(waitCacheSyncPollPeriod, func() (bool, error) {
+	//	lastSyncResourceVersion := r.rt.LastSyncResourceVersion()
+	//	return lastSyncResourceVersion != "", nil
+	//}, ctx.Done())
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+
+	return wait.PollUntilContextCancel(ctxWithTimeout, waitCacheSyncPollPeriod, true, func(ctx context.Context) (done bool, err error) {
+		return r.rt.LastSyncResourceVersion() != "", nil
+	})
 }
 
 // podInfoKeyFunc computes the store key per PodInfo object.
